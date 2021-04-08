@@ -11,7 +11,7 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.LinearLayout;
 
-public class ViewGroupAnimator extends AppCompatActivity {
+public class ViewGroupAnimatorActivity extends AppCompatActivity {
     private Button add,del;
     private int num;
     private LinearLayout container;

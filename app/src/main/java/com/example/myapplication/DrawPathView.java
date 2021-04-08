@@ -1,6 +1,5 @@
 package com.example.myapplication;
 
-import android.animation.Animator;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -12,16 +11,12 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PathMeasure;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.animation.Interpolator;
 
 import androidx.annotation.Nullable;
 
-import java.util.Arrays;
-
-public class SegmentView extends View {
+public class DrawPathView extends View {
     private Paint mPaint;
     private Path mDstPath,mCirclePath;
     private PathMeasure mPathMeasure;
@@ -34,20 +29,20 @@ public class SegmentView extends View {
     private final Matrix matrix= new Matrix() ;
 
     private ValueAnimator animator;
-    public SegmentView(Context context) {
+    public DrawPathView(Context context) {
         this(context,null);
     }
 
-    public SegmentView(Context context, @Nullable AttributeSet attrs) {
+    public DrawPathView(Context context, @Nullable AttributeSet attrs) {
         this(context, attrs,0);
     }
 
-    public SegmentView(Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
+    public DrawPathView(Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
         this(context, attrs, defStyleAttr,0);
     }
 
     @SuppressLint("ResourceAsColor")
-    public SegmentView(Context context, @Nullable AttributeSet attrs, int defStyleAttr, int defStyleRes) {
+    public DrawPathView(Context context, @Nullable AttributeSet attrs, int defStyleAttr, int defStyleRes) {
         super(context, attrs, defStyleAttr, defStyleRes);
         setLayerType (LAYER_TYPE_SOFTWARE , null);
 
