@@ -10,7 +10,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.MyApplication">
 
-        <activity android:name=".BezierCurveActivity">
+        <activity android:name=".BrushActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

@@ -16,18 +16,10 @@ public class BezierCurveActivity extends AppCompatActivity {
         setContentView(R.layout.bezier_curve_layout);
 
         final BezierCurveView bezierCurveView = findViewById(R.id.bezierCurveView);
-        final Button btn = findViewById(R.id.start_btn),clear_btn = findViewById(R.id.clear_btn);
-        btn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                bezierCurveView.startAnimator();
-            }
-        });
-        clear_btn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                bezierCurveView.clear();
-            }
-        });
+        final Button btn = findViewById(R.id.start_btn),clear_btn = findViewById(R.id.clear_btn),pause_btn = findViewById(R.id.pause_btn),resume_btn = findViewById(R.id.resume_btn);
+        btn.setOnClickListener(v -> bezierCurveView.startAnimator());
+        clear_btn.setOnClickListener(v -> bezierCurveView.clear());
+        pause_btn.setOnClickListener(v -> bezierCurveView.pauseAnimator());
+        resume_btn.setOnClickListener(v -> bezierCurveView.resumeAnimator());
     }
 }
