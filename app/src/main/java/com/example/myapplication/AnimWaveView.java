@@ -46,17 +46,20 @@ public class AnimWaveView extends View {
         super.onMeasure(widthMeasureSpec,heightMeasureSpec);
 
         mWaveOriginY = getMeasuredHeight() - getMeasuredHeight() / 3;
+        mItemWaveLength = getMeasuredWidth();
     }
 
     @Override
     protected void onDraw(Canvas canvas) {
         mWavePath.reset();
 
-        int halfWaveLen = mItemWaveLength /2;
-        mWavePath.moveTo(-mItemWaveLength + dx, mWaveOriginY);
-        for (int i = -mItemWaveLength; i <= getWidth() + mItemWaveLength; i += mItemWaveLength) {
+        int halfWaveLen = mItemWaveLength /5;
+        mWavePath.moveTo(0, mWaveOriginY);
+        for (int i = 0; i < 5; i ++) {
             mWavePath.rQuadTo(halfWaveLen / 2f, -100, halfWaveLen, 0);
             mWavePath.rQuadTo(halfWaveLen / 2f, 100, halfWaveLen, 0);
+
+            canvas.drawLine(i * halfWaveLen ,0,i * halfWaveLen ,mWaveOriginY,mPaint);
         }
         mWavePath.lineTo(getWidth(),getHeight());
         mWavePath.lineTo(0,getHeight());
