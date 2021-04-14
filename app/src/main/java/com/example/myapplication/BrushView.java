@@ -43,7 +43,6 @@ public class BrushView extends View {
                 mBrushPath.moveTo(x,y);
                 mPreX = x;
                 mPreY = y;
-
                 return true;
             case MotionEvent.ACTION_MOVE:
                 float endX = (mPreX + x) / 2f,endY = (mPreY + y) /2f;
