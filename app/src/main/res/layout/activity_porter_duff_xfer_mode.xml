@@ -7,11 +7,33 @@
     android:orientation="vertical"
     tools:context=".PorterDuffXferModeActivity">
 
-    <Button
-        android:id="@+id/reset_btn"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/clear" />
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/reset_btn"
+            style="@style/Widget.AppCompat.Button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/clear" />
+
+        <Button
+            android:id="@+id/revocation_btn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="撤回" />
+
+        <Button
+            android:id="@+id/erase_btn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="擦除" />
+    </LinearLayout>
 
     <com.example.myapplication.PorterDuffXferModeView
         android:id="@+id/porterDuffXferModeView"

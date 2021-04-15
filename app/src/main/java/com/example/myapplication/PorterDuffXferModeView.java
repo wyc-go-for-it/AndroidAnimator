@@ -11,7 +11,6 @@ import android.graphics.Path;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 
@@ -31,16 +30,19 @@ import androidx.annotation.Nullable;
  */
 public class PorterDuffXferModeView extends View {
     private float mPreX,mPreY;
-    private final Path mBrushPath = new  Path();
-    private final Paint mPaint = new Paint();
+    private Path mPenPath;
+    private final Path mErasePath;
+    private final Paint mPaint;
 
-    private final Bitmap mSrc,mBackground;
-    private Bitmap mDst;
+    private final Bitmap mSrcBitmap, mBackgroundBitmap;
+    private Bitmap mBrushBitmap,mEraseBitmap;
+    private boolean isErase = false;
 
-    private final Canvas mDrawPathCanvas = new Canvas();
+    private final Canvas mEraseCanvas = new Canvas();
 
+    private final PorterDuffXfermode mDuffXferMode;
 
-    private PorterDuffXfermode mDuffXferMode;
+    private final Path[] paths = new Path[]{new  Path(),new  Path(),new  Path(),new  Path(),new  Path()};
 
     public PorterDuffXferModeView(Context context) {
         this(context,null);
@@ -58,21 +60,29 @@ public class PorterDuffXferModeView extends View {
         super(context, attrs, defStyleAttr, defStyleRes);
         setLayerType(LAYER_TYPE_SOFTWARE,null);
 
+        mPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         mPaint.setColor(Color.BLUE);
         mPaint.setStyle(Paint.Style.STROKE);
         mPaint.setStrokeWidth(50);
 
-        mBackground = BitmapFactory.decodeResource(getResources(),R.drawable.other_background);
+        mBackgroundBitmap = BitmapFactory.decodeResource(getResources(),R.drawable.other_background);
 
         BitmapFactory.Options options = new BitmapFactory.Options();
         options.inSampleSize = 2;
-        mSrc = BitmapFactory.decodeResource(getResources(),R.drawable.background,options);
-
+        mSrcBitmap = BitmapFactory.decodeResource(getResources(),R.drawable.background,options);
         setDst();
 
         mDuffXferMode = new PorterDuffXfermode(PorterDuff.Mode.SRC_OUT);
+
+        mErasePath = new Path();
     }
 
+    private void setDst(){
+        if (mEraseBitmap == null)
+            mEraseBitmap = Bitmap.createBitmap(mSrcBitmap.getWidth(),mSrcBitmap.getHeight(), Bitmap.Config.ARGB_8888);
+
+        mEraseCanvas.setBitmap(mEraseBitmap);
+    }
 
     @SuppressLint("ClickableViewAccessibility")
     @Override
@@ -80,15 +90,34 @@ public class PorterDuffXferModeView extends View {
         float x = event.getX(),y = event.getY();
         switch (event.getAction()){
             case MotionEvent.ACTION_DOWN:
-                mBrushPath.moveTo(x,y);
+                if (isErase){
+                    mErasePath.moveTo(x,y);
+                }else {
+                    mPenPath = getContentPath();
+                    mPenPath.moveTo(x,y);
+                }
                 mPreX = x;
                 mPreY = y;
                 return true;
             case MotionEvent.ACTION_MOVE:
                 float endX = (mPreX + x) / 2f,endY = (mPreY + y) /2f;
-                mBrushPath.quadTo(mPreX,mPreY,endX,endY);
+                if (isErase){
+                    mErasePath.lineTo(endX,endY);
+                    //擦除
+                    erase();
+                }else if (mPenPath != null){
+                    mPenPath.quadTo(mPreX,mPreY,endX,endY);
+                }
                 mPreX = x;
                 mPreY = y;
+                invalidate();
+                break;
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
+                if (isErase){
+                    isErase = false;
+                    mErasePath.reset();
+                }
                 invalidate();
                 break;
         }
@@ -98,33 +127,91 @@ public class PorterDuffXferModeView extends View {
     @Override
     protected void onDraw(Canvas canvas) {
 
-        int id1 = canvas.save();
-        mPaint.setXfermode(null);
-        canvas.drawBitmap(mBackground,0,0,mPaint);
-        canvas.restoreToCount(id1);
+        //绘制底层背景
+        canvas.drawBitmap(mBackgroundBitmap,0,0,mPaint);
 
-        int id = canvas.save();
+        canvas.saveLayer(0,0,getWidth(),getHeight(),mPaint);
 
-        mDrawPathCanvas.drawPath(mBrushPath,mPaint);
-
-        canvas.drawBitmap(mDst,0,0,mPaint);
+        //绘制画笔内容
+        drawContentPath(canvas);
 
         mPaint.setXfermode(mDuffXferMode);
-        canvas.drawBitmap(mSrc,0,0,mPaint);
+
+        canvas.drawBitmap(mSrcBitmap,0,0,mPaint);
+
         mPaint.setXfermode(null);
 
-        canvas.restoreToCount(id);
+        canvas.restore();
+
+        //绘制擦除刷子
+        drawBrush(canvas);
+
     }
 
-    private void setDst(){
-        mDst = Bitmap.createBitmap(mSrc.getWidth(),mSrc.getHeight(), Bitmap.Config.ARGB_8888);
-        mDrawPathCanvas.setBitmap(mDst);
+    private Path getContentPath(){
+        Path path = null,next;
+        int len = paths.length,first = len - 2;
+        for (int i = first;i >= 0;i --){
+            path = paths[i];
+            if (!path.isEmpty()){
+                next = paths[i + 1];
+                if (i == first){
+                    next.addPath(path);
+                    path.reset();
+                }else {
+                    final Path tmp = path;
+                    path = next;
+                    paths[i] =  path;
+                    paths[i + 1] = tmp;
+                }
+            }
+        }
+        return path;
+    }
+
+    private void drawContentPath(final Canvas canvas){
+        for (Path p : paths){
+            if (p.isEmpty())continue;
+            canvas.drawPath(p,mPaint);
+        }
+    }
+
+    private void clearContentPath(){
+        for (Path p : paths){
+            p.reset();
+        }
+    }
+
+    public void revocation(){
+        for (Path p : paths){
+            if (p.isEmpty())continue;
+            p.reset();
+            invalidate();
+            return;
+        }
     }
 
     public void reset(){
-        mBrushPath.reset();
-        setDst();
+        clearContentPath();
         invalidate();
+    }
+
+    public void initErase(){
+        isErase = true;
+        if (mBrushBitmap == null)mBrushBitmap = BitmapFactory.decodeResource(getResources(),R.drawable.brush);
+    }
+    private void drawBrush(final Canvas canvas){
+        if (isErase){
+            canvas.drawBitmap(mBrushBitmap,mPreX - (mBrushBitmap.getWidth() >> 1),mPreY - (mBrushBitmap.getHeight() >> 1),mPaint);
+        }
+    }
+    private void erase(){
+        if (isErase){
+            for (Path p : paths){
+                if (p.isEmpty())continue;
+                p.op(mErasePath, Path.Op.DIFFERENCE);
+            }
+        }
     }
 
 }
