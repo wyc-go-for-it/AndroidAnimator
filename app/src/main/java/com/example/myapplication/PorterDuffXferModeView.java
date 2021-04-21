@@ -4,13 +4,16 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.BitmapShader;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
+import android.graphics.Shader;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 
@@ -63,7 +66,8 @@ public class PorterDuffXferModeView extends View {
         mPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         mPaint.setColor(Color.BLUE);
         mPaint.setStyle(Paint.Style.STROKE);
-        mPaint.setStrokeWidth(50);
+        mPaint.setStrokeWidth(5);
+        //mPaint.setShader(new BitmapShader(BitmapFactory.decodeResource(getResources(),R.drawable.arrows), Shader.TileMode.REPEAT, Shader.TileMode.REPEAT));
 
         mBackgroundBitmap = BitmapFactory.decodeResource(getResources(),R.drawable.other_background);
 
@@ -125,7 +129,23 @@ public class PorterDuffXferModeView extends View {
     }
 
     @Override
+    protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        Log.d("measureWidth", String.valueOf(getMeasuredWidth()));
+
+
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+    }
+
+    @Override
+    protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
+        super.onLayout(changed, 100, 50, 200, 100);
+        Log.d("width", String.valueOf(getWidth()));
+    }
+
+    @Override
     protected void onDraw(Canvas canvas) {
+
+
 
         //绘制底层背景
         canvas.drawBitmap(mBackgroundBitmap,0,0,mPaint);
@@ -146,6 +166,15 @@ public class PorterDuffXferModeView extends View {
         //绘制擦除刷子
         drawBrush(canvas);
 
+        drawErasePath(canvas);
+
+    }
+
+    private void drawErasePath(final Canvas canvas){
+        int c = mPaint.getColor();
+        mPaint.setColor(Color.GREEN);
+        canvas.drawPath(mErasePath,mPaint);
+        mPaint.setColor(c);
     }
 
     private Path getContentPath(){
