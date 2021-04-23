@@ -150,7 +150,7 @@ public class SwipeLayout extends FrameLayout {
             case MotionEvent.ACTION_DOWN:
                 mLastXMove = mXDown = ev.getX();
                 if (mXDown + getScrollX() < mContentView.getRight())
-                    return true;
+                    return onTouchEvent(ev);
                 break;
             case MotionEvent.ACTION_MOVE:
                 mXMove = ev.getX();
