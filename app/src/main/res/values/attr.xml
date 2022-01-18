@@ -3,4 +3,7 @@
     <declare-styleable name="SwipeLayout">
         <attr name="layout" format="reference" />
     </declare-styleable>
+    <declare-styleable name="FlowLayout_Layout">
+        <attr name="android:layout_weight" format="float"/>
+    </declare-styleable>
 </resources>
