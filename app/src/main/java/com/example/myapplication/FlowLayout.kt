@@ -6,13 +6,13 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.util.AttributeSet
-import android.view.MotionEvent
-import android.view.View
-import android.view.ViewConfiguration
-import android.view.ViewGroup
+import android.view.*
 import android.widget.FrameLayout
+import android.widget.OverScroller
 import android.widget.Scroller
 import androidx.core.view.*
+import com.wyc.logger.Logger
+import kotlin.math.abs
 import kotlin.math.min
 
 /**
@@ -29,12 +29,12 @@ import kotlin.math.min
  * @Version:        1.0
  */
 class FlowLayout(context: Context, attributes: AttributeSet?, defStyleAttr:Int, defStyleRes:Int) : ViewGroup(context,attributes,defStyleAttr,defStyleRes) {
-    private val mScroller: Scroller = Scroller(context)
+    private var mScroller: OverScroller = OverScroller(context)
     private val mTouchSlop = ViewConfiguration.get(context).scaledTouchSlop
 
-    private var mXDown = 0f
-    private var mXMove = 0f
-    private var mXLastMove = 0f
+    private var mYDown = 0f
+    private var mYMove = 0f
+    private var mYLastMove = 0f
 
     private var mTopBorder = 0
     private var mBottomBorder = 0
@@ -48,6 +48,12 @@ class FlowLayout(context: Context, attributes: AttributeSet?, defStyleAttr:Int, 
     private val mChildContainer = mutableListOf<MutableList<View>>()
 
     private val mClosing:Boolean
+    private var mCanScroll = false
+
+    private var mVelocityTracker: VelocityTracker? = null
+    private var mMinimumVelocity = 0
+    private var mMaximumVelocity = 0
+    private var mActivePointerId = -1
 
     init {
         val a: TypedArray = context.obtainStyledAttributes(attributes,R.styleable.FlowLayout)
@@ -64,25 +70,58 @@ class FlowLayout(context: Context, attributes: AttributeSet?, defStyleAttr:Int, 
         a.recycle()
 
         setWillNotDraw(false)
+
+        initVelocity()
     }
 
     constructor(context: Context):this(context,null)
     constructor(context: Context,attributes: AttributeSet?):this(context,attributes,0)
     constructor(context: Context,attributes: AttributeSet?,defStyleAttr:Int):this(context,attributes,defStyleAttr,0)
 
+    private fun initVelocity() {
+        val configuration = ViewConfiguration.get(context)
+        mMinimumVelocity = configuration.scaledMinimumFlingVelocity
+        mMaximumVelocity = configuration.scaledMaximumFlingVelocity
+    }
+
+    private fun initVelocityTrackerIfNotExists() {
+        if (mVelocityTracker == null) {
+            mVelocityTracker = VelocityTracker.obtain()
+        }
+    }
+
+    private fun recycleVelocityTracker() {
+        if (mVelocityTracker != null) {
+            mVelocityTracker!!.recycle()
+            mVelocityTracker = null
+        }
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        recycleVelocityTracker()
+    }
 
     override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
-        when (ev.action) {
-            MotionEvent.ACTION_DOWN -> {
-                mXDown = ev.rawY
-                mXLastMove = mXDown
-            }
-            MotionEvent.ACTION_MOVE -> {
-                mXMove = ev.rawY
-                val diff = Math.abs(mXMove - mXDown)
-                mXLastMove = mXMove
-                if (diff > mTouchSlop) {
-                    return true
+        if (mCanScroll){
+            initVelocityTrackerIfNotExists()
+            when (ev.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    mScroller.abortAnimation()
+
+                    mYDown = ev.y
+                    mYLastMove = mYDown
+
+                    mActivePointerId = ev.getPointerId(0)
+                    mVelocityTracker!!.addMovement(ev)
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    mYMove = ev.y
+                    val diff = abs(mYMove - mYDown)
+                    mYLastMove = mYMove
+                    if (diff > mTouchSlop) {
+                        return true
+                    }
                 }
             }
         }
@@ -94,24 +133,41 @@ class FlowLayout(context: Context, attributes: AttributeSet?, defStyleAttr:Int, 
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        when (event.action) {
-            MotionEvent.ACTION_MOVE -> {
-                mXMove = event.rawY
-                val scrolledY = (mXLastMove - mXMove).toInt()
-                if (scrollY + scrolledY < mTopBorder) {
-                    scrollTo(0, mTopBorder)
-                    return true
-                } else if (scrollY + height + scrolledY > mBottomBorder) {
-                    scrollTo(0, mBottomBorder - height)
-                    return true
+        if (mCanScroll){
+            when (event.action) {
+                MotionEvent.ACTION_MOVE -> {
+                    mVelocityTracker?.addMovement(event)
+
+                    mYMove = event.y
+                    val scrolledY = (mYLastMove - mYMove).toInt()
+
+                    Logger.d("scrollY:%d,scrolledY:%d,mTopBorder:%d,mBottomBorder:%d，height：%d",scrollY,scrolledY,mTopBorder,mBottomBorder,height)
+
+                    if (scrollY + scrolledY < mTopBorder) {
+                        scrollTo(0, 0)
+                        return true
+                    } else if (scrollY + height + scrolledY > mBottomBorder) {
+                        scrollTo(0, mBottomBorder - height)
+                        return true
+                    }
+                    scrollBy(0, scrolledY)
+                    mYLastMove = mYMove
                 }
-                scrollBy(0, scrolledY)
-                mXLastMove = mXMove
-            }
-            MotionEvent.ACTION_UP -> {
-                mScroller.startScroll(0, scrollY, 0, 0)
-                invalidate()
-                return performClick()
+                MotionEvent.ACTION_UP -> {
+                    val velocityTracker = mVelocityTracker
+                    velocityTracker?.computeCurrentVelocity(1000, mMaximumVelocity.toFloat())
+                    val initialYVelocity = velocityTracker?.getYVelocity(mActivePointerId)?.toInt() ?: 0
+
+                    mActivePointerId = -1
+
+                    recycleVelocityTracker()
+
+                    if ( abs(initialYVelocity) > mMinimumVelocity) {
+                        mScroller.fling(0, scrollY, 0, -initialYVelocity * 2, 0, 0, 0, mBottomBorder - height)
+                        invalidate()
+                    }
+                    return performClick()
+                }
             }
         }
         return super.onTouchEvent(event)
@@ -124,37 +180,36 @@ class FlowLayout(context: Context, attributes: AttributeSet?, defStyleAttr:Int, 
         }
     }
 
+    override fun onDragEvent(event: DragEvent?): Boolean {
+        return super.onDragEvent(event)
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
+        canvas.clipRect((left + paddingLeft).toFloat() - mSeparatorSize,(top + paddingTop + scrollY).toFloat()- mSeparatorSize,
+            (right - paddingRight).toFloat() + mSeparatorSize,(bottom - paddingBottom + scrollY).toFloat() + mSeparatorSize)
+
+        drawClosingBorder(canvas)
         drawHorizontalSeparator(canvas)
         drawVerticalSeparator(canvas)
-        drawClosingBorder(canvas)
     }
     private fun drawClosingBorder(canvas: Canvas){
         if (mClosing){
-            canvas.drawRect((left + paddingLeft).toFloat(),(top + paddingTop).toFloat(),(right - paddingRight).toFloat(),(bottom - paddingBottom).toFloat(),mSeparatorPaint)
+            canvas.drawRect((left + paddingLeft).toFloat(),(top + paddingTop + scrollY).toFloat(),(right - paddingRight).toFloat(),(bottom - paddingBottom + scrollY).toFloat(),mSeparatorPaint)
         }
     }
 
     private fun drawHorizontalSeparator(canvas: Canvas){
         val space = mVerticalSpacing / 2
         val offset = (mHorizontalSpacing + mSeparatorSize / 2f )/ 2f
-        mChildContainer.forEachIndexed {indexSub,sub ->
+        mChildContainer.forEach {sub ->
             val view = getMaxHeightViewOfRow(sub)
             val bottom = (if (view != null) view.bottom + view.marginBottom else 0) + space
             sub.forEachIndexed{index,it ->
                 if (index != sub.size - 1){
                     val startX = it.right.toFloat() + it.marginRight + offset
                     val stopX = it.right.toFloat() + it.marginRight + offset
-                    when (indexSub) {
-                        0 -> {
-                            canvas.drawLine(startX,if (mClosing) it.top.toFloat() - it.marginTop else it.top.toFloat() - it.marginTop - paddingTop,stopX, bottom ,mSeparatorPaint)
-                        }
-                        mChildContainer.size - 1 -> {
-                            canvas.drawLine(startX,it.top.toFloat() - it.marginTop - space ,stopX,if (mClosing) bottom else bottom + paddingBottom ,mSeparatorPaint)
-                        }
-                        else -> canvas.drawLine(startX,it.top.toFloat() - it.marginTop - space,stopX, bottom,mSeparatorPaint)
-                    }
+                    canvas.drawLine(startX,it.top.toFloat() - it.marginTop - space,stopX, bottom,mSeparatorPaint)
                 }
             }
         }
@@ -298,22 +353,36 @@ class FlowLayout(context: Context, attributes: AttributeSet?, defStyleAttr:Int, 
 
                 leftChild = 0
             }
+            if (mChildContainer.isNotEmpty()){
+                mTopBorder = getMinTopOfRow(mChildContainer[0]) - paddingTop
+                mBottomBorder = getMaxBottomOfRow(mChildContainer[mChildContainer.size - 1]) + paddingBottom
+            }
 
-            mTopBorder = getChildAt(0).top
-            mBottomBorder = getChildAt(childCount - 1).bottom
+            mCanScroll = mBottomBorder > height
         }
     }
     private fun setChildFrame(child: View, left: Int, top: Int, width: Int, height: Int) {
         child.layout(left, top, left + width, top + height)
     }
 
-    private fun getMaxHeightOfRowWithoutTopMargin(heightList:MutableList<View>):Int{
-        val view = getMaxHeightViewOfRow(heightList)
-        view?.apply {
-            val lp = layoutParams as MarginLayoutParams
-            return measuredHeight + lp.bottomMargin
+    private fun getMaxBottomOfRow(heightList:MutableList<View>):Int{
+        if (heightList.isEmpty())return 0
+        val list = heightList.toMutableList()
+        list.sortBy{
+            val lp = it.layoutParams as MarginLayoutParams
+            lp.topMargin
         }
-        return 0
+        val view = list[list.size - 1]
+        return view.bottom + (view.layoutParams as MarginLayoutParams).bottomMargin
+    }
+
+    private fun getMinTopOfRow(heightList:MutableList<View>):Int{
+        if (heightList.isEmpty())return 0
+        val list = heightList.toMutableList()
+        list.sortBy{
+            it.top
+        }
+        return list[0].top
     }
 
     private fun getMaxHeightOfRow(heightList:MutableList<View>):Int{

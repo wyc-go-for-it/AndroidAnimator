@@ -21,30 +21,8 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.value_animator_layout);
-
-        final Button btn = findViewById(R.id.btn);
-        tv = findViewById(R.id.tv);
-
-        btn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                AnimatorSet animationSet = new AnimatorSet();animationSet.playTogether();animationSet.start();
-
-                ObjectAnimator objectAnimator = ObjectAnimator.ofFloat(tv,"rotation",0,180,0);
-
-                objectAnimator.setDuration(2000);
-                objectAnimator.start();
-            }
-        });
-        tv.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Toast.makeText(v.getContext(),"8888888",Toast.LENGTH_LONG).show();
-            }
-        });
-
-    }
+        setContentView(R.layout.activity_main);
+     }
 
     private void doAnimator(){
         ValueAnimator animator = ValueAnimator.ofInt(0, 400);
