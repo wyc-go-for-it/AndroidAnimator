@@ -13,5 +13,6 @@
         <attr name="separator_color" format="color"/>
         <attr name="separator_size" format="dimension"/>
         <attr name="closing" format="boolean"/>
+        <attr name="rowCount" format="integer"/>
     </declare-styleable>
 </resources>

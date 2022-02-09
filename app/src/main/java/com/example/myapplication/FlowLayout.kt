@@ -9,7 +9,6 @@ import android.util.AttributeSet
 import android.view.*
 import android.widget.FrameLayout
 import android.widget.OverScroller
-import android.widget.Scroller
 import androidx.core.view.*
 import com.wyc.logger.Logger
 import kotlin.math.abs
@@ -42,6 +41,7 @@ class FlowLayout(context: Context, attributes: AttributeSet?, defStyleAttr:Int, 
     private val mHorizontalSpacing:Float
     private val mVerticalSpacing:Float
     private val mSeparatorSize:Float
+    private val mRowCount:Int
 
     private val mSeparatorPaint = Paint()
 
@@ -61,6 +61,8 @@ class FlowLayout(context: Context, attributes: AttributeSet?, defStyleAttr:Int, 
         mVerticalSpacing = a.getDimension(R.styleable.FlowLayout_item_vertical_spacing, 0f)
         mSeparatorSize = min(a.getDimension(R.styleable.FlowLayout_separator_size,1f), min(mHorizontalSpacing,mVerticalSpacing))
         mClosing = a.getBoolean(R.styleable.FlowLayout_closing,false)
+
+        mRowCount = a.getInt(R.styleable.FlowLayout_rowCount,0)
 
         mSeparatorPaint.color = a.getColor(R.styleable.FlowLayout_separator_color,Color.GRAY)
         mSeparatorPaint.isAntiAlias = true
@@ -186,9 +188,6 @@ class FlowLayout(context: Context, attributes: AttributeSet?, defStyleAttr:Int, 
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        canvas.clipRect((left + paddingLeft).toFloat() - mSeparatorSize,(top + paddingTop + scrollY).toFloat()- mSeparatorSize,
-            (right - paddingRight).toFloat() + mSeparatorSize,(bottom - paddingBottom + scrollY).toFloat() + mSeparatorSize)
-
         drawClosingBorder(canvas)
         drawHorizontalSeparator(canvas)
         drawVerticalSeparator(canvas)
@@ -258,12 +257,20 @@ class FlowLayout(context: Context, attributes: AttributeSet?, defStyleAttr:Int, 
             if ((lp.height == ViewGroup.LayoutParams.WRAP_CONTENT || lp.height == 0) && childHeightWeight > 0f){
                 lp.height = (childHeightWeight * (heightSize - (paddingTop + paddingBottom))).toInt()
             }
-            if ((lp.width == ViewGroup.LayoutParams.WRAP_CONTENT || lp.width == 0) && childWidthWeight > 0f){
-                lp.width = (childWidthWeight * (widthSize - (paddingLeft + paddingRight))).toInt()
+            if (mRowCount == 0){
+                if ((lp.width == ViewGroup.LayoutParams.WRAP_CONTENT || lp.width == 0) && childWidthWeight > 0f){
+                    lp.width = (childWidthWeight * (widthSize - (paddingLeft + paddingRight))).toInt()
+                }
+            }else{
+                val horOffset = (mRowCount - 1) * mHorizontalSpacing
+                if ((lp.width == ViewGroup.LayoutParams.WRAP_CONTENT || lp.width == 0) && childWidthWeight > 0f){
+                    lp.width = (childWidthWeight * (widthSize - (paddingLeft + paddingRight + horOffset))).toInt()
+                }
             }
+
             measureChild(it,widthMeasureSpec,heightMeasureSpec)
 
-            lineWidth += it.measuredWidth + lp.leftMargin + lp.rightMargin + mHorizontalSpacing.toInt()
+            lineWidth += it.measuredWidth + lp.leftMargin + lp.rightMargin
             if (lineWidth > measuredWidth - paddingLeft - paddingRight){
                 maxHeight += getMaxHeightOfRow(heightList)
                 lineWidth = it.measuredWidth
@@ -279,10 +286,11 @@ class FlowLayout(context: Context, attributes: AttributeSet?, defStyleAttr:Int, 
             maxHeight += getMaxHeightOfRow(heightList)
         }
 
-        maxHeight += (paddingTop + paddingBottom)
+        maxHeight += ((paddingTop + paddingBottom) + if (mChildContainer.isEmpty()) 0 else ((mChildContainer.size - 1) * mVerticalSpacing).toInt())
         maxWidth += (paddingLeft + paddingRight) + calculateMaxWidth()
 
         var resultSize = 0
+        Logger.d("widthSpec:%d,heightSpec:%d",widthSpec,heightSpec)
         when(heightSpec){
             MeasureSpec.EXACTLY -> {
                 resultSize = heightSize
@@ -294,7 +302,6 @@ class FlowLayout(context: Context, attributes: AttributeSet?, defStyleAttr:Int, 
                 resultSize = maxHeight
             }
         }
-        resultSize +=  if (mChildContainer.isEmpty()) 0 else ((mChildContainer.size - 1) * mVerticalSpacing).toInt()
         val newHeightMeasureSpec = MeasureSpec.makeMeasureSpec(resultSize,heightSpec)
 
         when(widthSpec){
@@ -332,7 +339,7 @@ class FlowLayout(context: Context, attributes: AttributeSet?, defStyleAttr:Int, 
         if (changed){
             var lineHeight = 0
             var leftChild = 0
-            var space: Float
+            var horizontalSpace: Float
             var previous:MutableList<View> = mutableListOf()
             mChildContainer.forEachIndexed{indexSub,sub ->
                 if (indexSub > 0 ){
@@ -347,8 +354,8 @@ class FlowLayout(context: Context, attributes: AttributeSet?, defStyleAttr:Int, 
 
                     setChildFrame(it,leftChild + paddingLeft,paddingTop + lineHeight + lp.topMargin,it.measuredWidth,it.measuredHeight)
 
-                    space = if (index != sub.size - 1) mHorizontalSpacing else 0f
-                    leftChild += it.measuredWidth + lp.rightMargin + space.toInt()
+                    horizontalSpace = if (index != sub.size - 1) mHorizontalSpacing else 0f
+                    leftChild += it.measuredWidth + lp.rightMargin + horizontalSpace.toInt()
                 }
 
                 leftChild = 0
@@ -404,7 +411,7 @@ class FlowLayout(context: Context, attributes: AttributeSet?, defStyleAttr:Int, 
     }
 
     override fun generateLayoutParams(attrs:AttributeSet): LayoutParams {
-         return LayoutParams(context,attrs)
+        return LayoutParams(context,attrs)
     }
 
     override fun generateLayoutParams(lp:ViewGroup.LayoutParams):ViewGroup.LayoutParams{
@@ -421,7 +428,7 @@ class FlowLayout(context: Context, attributes: AttributeSet?, defStyleAttr:Int, 
         var weightHeight = 0f
 
         constructor(context: Context,attrs:AttributeSet?) : super(context,attrs){
-            val a: TypedArray = context.obtainStyledAttributes(attrs,R.styleable.FlowLayout_Layout)
+            val a: TypedArray = context.obtainStyledAttributes(attrs, R.styleable.FlowLayout_Layout)
             weightWidth = a.getFloat(R.styleable.FlowLayout_Layout_layout_weight_width, 0f)
             weightHeight = a.getFloat(R.styleable.FlowLayout_Layout_layout_weight_height, 0f)
             a.recycle()
