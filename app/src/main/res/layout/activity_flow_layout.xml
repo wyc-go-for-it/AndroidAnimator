@@ -10,6 +10,14 @@
     app:closing="true"
     app:item_vertical_spacing="0dp"
     app:separator_color="@color/design_default_color_secondary"
+    app:title="8888gggg"
+    app:titleBackgroundColor="#4FD141"
+    app:titleColor="#EF1010"
+    app:titleDirection="TOP"
+    app:titleFontSize="20sp"
+    app:titlePaddingBottom="25dp"
+    app:titlePaddingLeft="8dp"
+    app:titlePaddingTop="25dp"
     tools:context=".FlowLayoutActivity">
 
     <LinearLayout
@@ -22,13 +30,15 @@
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1">
+            android:layout_weight="1"
+            android:visibility="gone">
 
             <Button
                 android:id="@+id/button16"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Button"
+                android:visibility="gone"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
@@ -39,14 +49,16 @@
             android:id="@+id/textView5"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="TextView" />
+            android:text="TextView"
+            android:visibility="gone" />
 
         <TextView
             android:id="@+id/textView6"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="TextView" />
+            android:text="TextView"
+            android:visibility="gone" />
     </LinearLayout>
 
     <TextView
@@ -55,7 +67,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="15dp"
         android:text="TextView39999999"
-        android:visibility="visible"
+        android:visibility="gone"
         app:layout_weight_width="0.25" />
 
     <TextView
@@ -64,7 +76,7 @@
         android:layout_height="wrap_content"
         android:background="@color/design_default_color_error"
         android:text="TextView455555"
-        android:visibility="visible"
+        android:visibility="gone"
         app:layout_weight_width="0.25" />
 
     <TextView
@@ -73,7 +85,7 @@
         android:layout_height="wrap_content"
         android:background="@color/design_default_color_secondary_variant"
         android:text="TextView10"
-        android:visibility="visible"
+        android:visibility="gone"
         app:layout_weight_width="0.25" />
 
     <TextView
@@ -82,7 +94,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="30dp"
         android:text="TextView11"
-        android:visibility="visible"
+        android:visibility="gone"
         app:layout_weight_width="0.25" />
 
     <TextView
@@ -90,7 +102,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="TextView12"
-        android:visibility="visible"
+        android:visibility="gone"
         app:layout_weight_width="0.25" />
 
     <TextView
@@ -99,7 +111,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="0dp"
         android:text="TextView13"
-        android:visibility="visible"
+        android:visibility="gone"
         app:layout_weight_width="0.25" />
 
     <TextView
@@ -107,7 +119,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="TextView14"
-        android:visibility="visible"
+        android:visibility="gone"
         app:layout_weight_width="0.25" />
 
     <Button
@@ -117,85 +129,100 @@
         android:layout_marginTop="88dp"
         android:layout_marginBottom="0dp"
         android:text="Button"
-        app:layout_weight_width="0.2" />
+        android:visibility="gone"
+        app:layout_weight_width="0.2"
+        tools:ignore="DuplicateSpeakableTextCheck" />
 
     <Button
         android:id="@+id/button12"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Button" />
+        android:text="Button"
+        android:visibility="gone" />
 
     <Button
         android:id="@+id/button13"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Button" />
+        android:text="Button"
+        android:visibility="gone" />
 
     <Button
         android:id="@+id/button14"
         android:layout_width="wrap_content"
         android:layout_height="108dp"
-        android:text="Button" />
+        android:text="Button"
+        android:visibility="gone" />
 
     <Button
         android:id="@+id/button9"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Button" />
+        android:text="Button"
+        android:visibility="gone" />
 
     <Button
         android:id="@+id/button10"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Button" />
+        android:text="Button"
+        android:visibility="gone" />
 
     <Button
         android:id="@+id/button15"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Button" />
+        android:text="Button"
+        android:visibility="gone" />
 
     <Button
         android:id="@+id/button20"
         android:layout_width="wrap_content"
         android:layout_height="108dp"
-        android:text="Button" />
+        android:text="Button"
+        android:visibility="gone" />
 
     <Button
         android:id="@+id/button17"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Button" />
+        android:text="Button"
+        android:visibility="gone" />
 
     <Button
         android:id="@+id/button22"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Button" />
+        android:text="Button"
+        android:visibility="gone" />
 
     <Button
         android:id="@+id/button21"
         android:layout_width="wrap_content"
         android:layout_height="128dp"
         android:layout_marginTop="88dp"
-        android:text="Button" />
+        android:text="Button"
+        android:visibility="gone" />
 
     <Button
         android:id="@+id/button23"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Button" />
+        android:text="Button"
+        android:visibility="gone" />
 
     <Button
         android:id="@+id/button18"
         android:layout_width="wrap_content"
         android:layout_height="108dp"
-        android:text="Button" />
+        android:text="Button"
+        android:visibility="gone" />
 
     <Button
         android:id="@+id/button19"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Button" />
+        android:text="Button19"
+        android:visibility="visible" />
 
 </com.example.myapplication.FlowLayout>

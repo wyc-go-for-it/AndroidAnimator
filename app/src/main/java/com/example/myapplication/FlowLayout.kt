@@ -2,9 +2,7 @@ package com.example.myapplication
 
 import android.content.Context
 import android.content.res.TypedArray
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Paint
+import android.graphics.*
 import android.util.AttributeSet
 import android.view.*
 import android.widget.EdgeEffect
@@ -12,8 +10,10 @@ import android.widget.FrameLayout
 import android.widget.OverScroller
 import androidx.core.view.*
 import com.wyc.logger.Logger
+import java.util.function.Consumer
 import kotlin.math.abs
 import kotlin.math.min
+import kotlin.math.sign
 
 /**
  *
@@ -39,16 +39,16 @@ class FlowLayout(context: Context, attributes: AttributeSet?, defStyleAttr:Int, 
     private var mTopBorder = 0
     private var mBottomBorder = 0
 
-    private val mHorizontalSpacing:Float
-    private val mVerticalSpacing:Float
-    private val mSeparatorSize:Float
-    private val mRowCount:Int
+    private var mHorizontalSpacing:Float = 0f
+    private var mVerticalSpacing:Float = 0f
+    private var mSeparatorSize:Float = 0f
+    private var mRowCount:Int = 0
 
     private val mSeparatorPaint = Paint()
 
     private val mChildContainer = mutableListOf<MutableList<View>>()
 
-    private val mClosing:Boolean
+    private var mClosing:Boolean = false
     private var mCanScroll = false
 
     private var mVelocityTracker: VelocityTracker? = null
@@ -56,8 +56,20 @@ class FlowLayout(context: Context, attributes: AttributeSet?, defStyleAttr:Int, 
     private var mMaximumVelocity = 0
     private var mActivePointerId = -1
 
-    private val mEdgeEffectTop:EdgeEffect
+    private var mEdgeEffect:EdgeEffect
     private var hasToBottom = false
+
+    //标题参数
+    private var mTitlePaint:Paint? = null
+    private var mTitle:String = ""
+    private var mTitleDirection:TitleDirection = TitleDirection.LEFT
+    private var mTitlePaddingLeft:Float = 0.0f
+    private var mTitlePaddingRight:Float = 0.0f
+    private var mTitlePaddingTop:Float = 0.0f
+    private var mTitlePaddingBottom:Float = 0.0f
+    private var mTitleBound:Rect? = null
+    private var mTitleColor:Int = 0x0000000
+    private var mTitleBackgroundColor:Int = 0xFFFFFFF
 
     init {
         val a: TypedArray = context.obtainStyledAttributes(attributes,R.styleable.FlowLayout)
@@ -73,14 +85,42 @@ class FlowLayout(context: Context, attributes: AttributeSet?, defStyleAttr:Int, 
         mSeparatorPaint.style = Paint.Style.STROKE
         mSeparatorPaint.strokeWidth = mSeparatorSize
 
+        calculateTitle(a)
+
         a.recycle()
 
-        mEdgeEffectTop = EdgeEffect(context)
-        mEdgeEffectTop.color = Color.RED
+        mEdgeEffect = EdgeEffect(context)
+        mEdgeEffect.color = Color.RED
 
         setWillNotDraw(false)
 
         initVelocity()
+    }
+
+    private fun calculateTitle(a: TypedArray){
+        mTitle = a.getString(R.styleable.FlowLayout_title)?:""
+        if (mTitle.isNotEmpty()){
+            mTitleDirection = TitleDirection.fromInt(a.getInt(R.styleable.FlowLayout_titleDirection,1))
+            mTitlePaddingLeft = a.getDimension(R.styleable.FlowLayout_titlePaddingLeft,0.0f)
+            mTitlePaddingRight = a.getDimension(R.styleable.FlowLayout_titlePaddingRight,0.0f)
+            mTitlePaddingTop = a.getDimension(R.styleable.FlowLayout_titlePaddingTop,0.0f)
+            mTitlePaddingBottom = a.getDimension(R.styleable.FlowLayout_titlePaddingBottom,0.0f)
+            mTitleColor = a.getColor(R.styleable.FlowLayout_titleColor,0x000000)
+            mTitleBackgroundColor = a.getColor(R.styleable.FlowLayout_titleBackgroundColor,0xFFFFFFFF.toInt())
+
+            mTitlePaint = Paint()
+            mTitlePaint!!.textSize = a.getDimension(R.styleable.FlowLayout_titleFontSize,12f)
+            mTitlePaint!!.isAntiAlias = true
+
+            val  textBound = Rect()
+            mTitlePaint!!.getTextBounds(mTitle,0,mTitle.length,textBound)
+            mTitleBound = Rect()
+            if (mTitleDirection == TitleDirection.TOP || mTitleDirection == TitleDirection.BOTTOM){
+                mTitleBound!!.bottom = textBound.height() + mTitlePaddingTop.toInt() + mTitlePaddingBottom.toInt()
+            }else if (mTitleDirection == TitleDirection.LEFT || mTitleDirection == TitleDirection.RIGHT){
+                mTitleBound!!.right = textBound.width() + mTitlePaddingLeft.toInt() + mTitlePaddingRight.toInt()
+            }
+        }
     }
 
     constructor(context: Context):this(context,null)
@@ -108,7 +148,14 @@ class FlowLayout(context: Context, attributes: AttributeSet?, defStyleAttr:Int, 
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
-        mEdgeEffectTop.setSize(w, h shr 1)
+        mEdgeEffect.setSize(w, h shr 1)
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        if(children.find { it.visibility == VISIBLE } == null){
+            visibility = GONE
+        }
     }
 
     override fun onDetachedFromWindow() {
@@ -122,7 +169,7 @@ class FlowLayout(context: Context, attributes: AttributeSet?, defStyleAttr:Int, 
             when (ev.action) {
                 MotionEvent.ACTION_DOWN -> {
                     mScroller.abortAnimation()
-                    mEdgeEffectTop.finish()
+                    mEdgeEffect.finish()
                     postInvalidateOnAnimation()
 
                     mYDown = ev.y
@@ -157,16 +204,16 @@ class FlowLayout(context: Context, attributes: AttributeSet?, defStyleAttr:Int, 
                     mYMove = event.y
                     val scrolledY = (mYLastMove - mYMove).toInt()
 
-                    Logger.d("scrollY:%d,scrolledY:%d,mTopBorder:%d,mBottomBorder:%d，height：%d",scrollY,scrolledY,mTopBorder,mBottomBorder,height)
+                    //Logger.d("scrollY:%d,scrolledY:%d,mTopBorder:%d,mBottomBorder:%d，height：%d",scrollY,scrolledY,mTopBorder,mBottomBorder,height)
 
-                    if (scrollY + scrolledY < mTopBorder) {
+                    if (scrollY + scrolledY < mTopBorder - if (mTitleDirection == TitleDirection.TOP) mTitleBound?.height()?:0 else 0 ) {
                         scrollTo(0, 0)
                         hasToBottom = false
                         edgePull(event)
                         return true
-                    } else if (scrollY + height + scrolledY > mBottomBorder) {
+                    } else if (scrollY + height + scrolledY > mBottomBorder  ) {
                         hasToBottom = true
-                        scrollTo(0, mBottomBorder - height)
+                        scrollTo(0, mBottomBorder - height + if (mTitleDirection == TitleDirection.BOTTOM) mTitleBound?.height()?:0 else 0 )
                         edgePull(event)
                         return true
                     }
@@ -186,7 +233,7 @@ class FlowLayout(context: Context, attributes: AttributeSet?, defStyleAttr:Int, 
                     recycleVelocityTracker()
 
                     if ( abs(initialYVelocity) > mMinimumVelocity) {
-                        mScroller.fling(0, scrollY, 0, -initialYVelocity * 2, 0, 0, 0, mBottomBorder - height)
+                        mScroller.fling(0,(scrollY - sign(initialYVelocity.toDouble()) * (mTitleBound?.height()?:0)).toInt(), 0, -initialYVelocity * 2, 0, 0, 0, mBottomBorder - height+  (mTitleBound?.height()?:0))
                         invalidate()
                     }
                     return performClick()
@@ -196,33 +243,76 @@ class FlowLayout(context: Context, attributes: AttributeSet?, defStyleAttr:Int, 
         return super.onTouchEvent(event)
     }
     private fun edgePull(event: MotionEvent){
-        mEdgeEffectTop.onPull(event.y / height,if (hasToBottom) 1 - event.x / width else event.x / width)
+        mEdgeEffect.onPull(event.y/ height,if (hasToBottom) 1 - event.x / width else event.x / width)
         postInvalidateOnAnimation()
     }
     private fun edgeRelease(){
-        mEdgeEffectTop.onRelease()
+        mEdgeEffect.onRelease()
         postInvalidateOnAnimation()
     }
 
     override fun onDrawForeground(canvas: Canvas) {
         super.onDrawForeground(canvas)
-        if (!mEdgeEffectTop.isFinished){
+        if (!mEdgeEffect.isFinished){
             if (hasToBottom){
                 canvas.save()
                 canvas.translate(-width.toFloat(), 0f)
                 canvas.rotate(180f,width.toFloat(),0f)
                 canvas.translate(0f, (-mBottomBorder).toFloat())
-                mEdgeEffectTop.draw(canvas)
+                mEdgeEffect.draw(canvas)
                 canvas.restore()
-            }else
-                mEdgeEffectTop.draw(canvas)
+            }else{
+                if (mTopBorder != 0){
+                    canvas.save()
+                    canvas.translate(0f, mTopBorder.toFloat())
+                    mEdgeEffect.draw(canvas)
+                    canvas.restore()
+                }else
+                    mEdgeEffect.draw(canvas)
+            }
             invalidate()
+        }
+        drawTitle(canvas)
+    }
+
+    private fun drawTitle(canvas: Canvas){
+        mTitleBound?.apply {
+            mTitlePaint!!.color = mTitleBackgroundColor
+            canvas.drawRect(this,mTitlePaint!!)
+
+            val  textBound = Rect()
+            mTitlePaint!!.getTextBounds(mTitle,0,mTitle.length,textBound)
+
+            val baseLineX = this.left + mTitlePaddingLeft
+            val baseLineY = this.centerY() - textBound.centerY()
+            mTitlePaint!!.color = mTitleColor
+            canvas.drawText(mTitle, baseLineX, baseLineY.toFloat(),mTitlePaint!!)
+        }
+    }
+
+    override fun onScrollChanged(l: Int, t: Int, oldl: Int, oldt: Int) {
+        super.onScrollChanged(l, t, oldl, oldt)
+        mTitleBound?.apply {
+            this.top +=   t - oldt
+            this.bottom += t - oldt
         }
     }
 
     override fun computeScroll() {
         if (mScroller.computeScrollOffset()) {
-            scrollTo(mScroller.currX, mScroller.currY)
+            val cy = if (scrollY + height  >= mBottomBorder) {
+                    mScroller.forceFinished(true)
+                    mBottomBorder - height
+            } else mScroller.currY
+
+            val cx = mScroller.currX
+            scrollTo(cx, cy)
+            if (mEdgeEffect.isFinished && scrollY <= 0){
+                mEdgeEffect.onAbsorb(mScroller.currVelocity.toInt())
+            }else if (mEdgeEffect.isFinished && scrollY + height  >= mBottomBorder){
+                hasToBottom = true
+                mEdgeEffect.onAbsorb(mScroller.currVelocity.toInt())
+            }
             invalidate()
         }
     }
@@ -300,23 +390,23 @@ class FlowLayout(context: Context, attributes: AttributeSet?, defStyleAttr:Int, 
             childHeightWeight = lp.weightHeight
 
             if ((lp.height == ViewGroup.LayoutParams.WRAP_CONTENT || lp.height == 0) && childHeightWeight > 0f){
-                lp.height = (childHeightWeight * (heightSize - (paddingTop + paddingBottom))).toInt()
+                lp.height = (childHeightWeight * (heightSize - (paddingTop + paddingBottom + (mTitleBound?.height()?:0)))).toInt()
             }
             if (mRowCount == 0){
                 if ((lp.width == ViewGroup.LayoutParams.WRAP_CONTENT || lp.width == 0) && childWidthWeight > 0f){
-                    lp.width = (childWidthWeight * (widthSize - (paddingLeft + paddingRight))).toInt()
+                    lp.width = (childWidthWeight * (widthSize - (mTitleBound?.width()?:0) - (paddingLeft + paddingRight))).toInt()
                 }
             }else{
                 val horOffset = (mRowCount - 1) * mHorizontalSpacing
                 if ((lp.width == ViewGroup.LayoutParams.WRAP_CONTENT || lp.width == 0) && childWidthWeight > 0f){
-                    lp.width = (childWidthWeight * (widthSize - (paddingLeft + paddingRight + horOffset))).toInt()
+                    lp.width = (childWidthWeight * (widthSize - (mTitleBound?.width()?:0) - (paddingLeft + paddingRight + horOffset))).toInt()
                 }
             }
 
             measureChild(it,widthMeasureSpec,heightMeasureSpec)
 
             lineWidth += it.measuredWidth + lp.leftMargin + lp.rightMargin
-            if (lineWidth > measuredWidth - paddingLeft - paddingRight){
+            if (lineWidth > measuredWidth - (mTitleBound?.width()?:0) - paddingLeft - paddingRight){
                 maxHeight += getMaxHeightOfRow(heightList)
                 lineWidth = it.measuredWidth
 
@@ -340,7 +430,7 @@ class FlowLayout(context: Context, attributes: AttributeSet?, defStyleAttr:Int, 
                 resultSize = heightSize
             }
             MeasureSpec.AT_MOST -> {
-                resultSize = maxHeight.coerceAtMost(heightSize)
+                resultSize = maxHeight.coerceAtMost(heightSize + (mTitleBound?.height()?:0))
             }
             MeasureSpec.UNSPECIFIED -> {
                 resultSize = maxHeight
@@ -353,7 +443,7 @@ class FlowLayout(context: Context, attributes: AttributeSet?, defStyleAttr:Int, 
                 resultSize = widthSize
             }
             MeasureSpec.AT_MOST -> {
-                resultSize = maxWidth.coerceAtMost(widthSize)
+                resultSize = maxWidth.coerceAtMost(widthSize + (mTitleBound?.width()?:0))
             }
             MeasureSpec.UNSPECIFIED -> {
                 resultSize = maxWidth
@@ -410,10 +500,50 @@ class FlowLayout(context: Context, attributes: AttributeSet?, defStyleAttr:Int, 
             }
 
             mCanScroll = mBottomBorder > height
+
+            updateTitleBound(r, b)
         }
     }
     private fun setChildFrame(child: View, left: Int, top: Int, width: Int, height: Int) {
-        child.layout(left, top, left + width, top + height)
+        if (mTitleBound != null){
+            when(mTitleDirection){
+                TitleDirection.TOP->{
+                    child.layout(left, top + mTitleBound!!.height(), left + width, top + height + mTitleBound!!.height())
+                }
+                TitleDirection.BOTTOM->{
+                    child.layout(left, top, left + width, top + height )
+                }
+                TitleDirection.LEFT->{
+                    child.layout(left + mTitleBound!!.width(), top, left + width + mTitleBound!!.width(), top + height)
+                }
+                TitleDirection.RIGHT->{
+                    child.layout(left, top, left + width , top + height)
+                }
+            }
+        }else
+            child.layout(left, top, left + width, top + height)
+    }
+    private fun updateTitleBound(r: Int, b: Int){
+        mTitleBound?.let {
+            when(mTitleDirection){
+                TitleDirection.TOP -> {
+                    it.right = r
+                }
+                TitleDirection.BOTTOM -> {
+                    it.right = r
+                    it.top += b - it.height()
+                    it.bottom = b
+                }
+                TitleDirection.LEFT -> {
+                    it.bottom = b
+                }
+                TitleDirection.RIGHT -> {
+                    it.bottom = b
+                    it.left = r - it.width()
+                    it.right = r
+                }
+            }
+        }
     }
 
     private fun getMaxBottomOfRow(heightList:MutableList<View>):Int{
@@ -493,6 +623,13 @@ class FlowLayout(context: Context, attributes: AttributeSet?, defStyleAttr:Int, 
         constructor(source: LayoutParams) : super(source){
             weightWidth = source.weightWidth
             weightHeight = source.weightHeight
+        }
+    }
+
+    enum class TitleDirection(v:Int) {
+        LEFT(0),TOP(1),RIGHT(2),BOTTOM(3);
+        companion object {
+            fun fromInt(value: Int) = values().first { it.ordinal == value }
         }
     }
 }
