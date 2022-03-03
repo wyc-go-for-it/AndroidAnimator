@@ -389,24 +389,21 @@ class FlowLayout(context: Context, attributes: AttributeSet?, defStyleAttr:Int, 
             childWidthWeight = lp.weightWidth
             childHeightWeight = lp.weightHeight
 
-            if ((lp.height == ViewGroup.LayoutParams.WRAP_CONTENT || lp.height == 0) && childHeightWeight > 0f){
+            if (childHeightWeight > 0f){
                 lp.height = (childHeightWeight * (heightSize - (paddingTop + paddingBottom + (mTitleBound?.height()?:0)))).toInt()
             }
-            if (mRowCount == 0){
-                if ((lp.width == ViewGroup.LayoutParams.WRAP_CONTENT || lp.width == 0) && childWidthWeight > 0f){
+            if (childWidthWeight > 0f){
+                if (mRowCount == 0){
                     lp.width = (childWidthWeight * (widthSize - (mTitleBound?.width()?:0) - (paddingLeft + paddingRight))).toInt()
-                }
-            }else{
-                val horOffset = (mRowCount - 1) * mHorizontalSpacing
-                if ((lp.width == ViewGroup.LayoutParams.WRAP_CONTENT || lp.width == 0) && childWidthWeight > 0f){
-                    lp.width = (childWidthWeight * (widthSize - (mTitleBound?.width()?:0) - (paddingLeft + paddingRight + horOffset))).toInt()
+                }else{
+                     lp.width = (childWidthWeight * (widthSize - (mTitleBound?.width()?:0) - (paddingLeft + paddingRight + (mRowCount - 1) * mHorizontalSpacing))).toInt()
                 }
             }
 
             measureChild(it,widthMeasureSpec,heightMeasureSpec)
 
             lineWidth += it.measuredWidth + lp.leftMargin + lp.rightMargin
-            if (lineWidth > measuredWidth - (mTitleBound?.width()?:0) - paddingLeft - paddingRight){
+            if (lineWidth > widthSize - (mTitleBound?.width()?:0) - paddingLeft - paddingRight){
                 maxHeight += getMaxHeightOfRow(heightList)
                 lineWidth = it.measuredWidth
 
